@@ -65,10 +65,6 @@
             getTopics();
         }, 1000);
     }
-
-    $: console.log(isSearching);
-
-    $: console.log(filteredRowIds);
 </script>
 
 {#if isLoading}
