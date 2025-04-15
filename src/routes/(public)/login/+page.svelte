@@ -7,6 +7,7 @@
     import {
         Button,
         TextInput,
+        Tile,
         ToastNotification,
     } from "carbon-components-svelte";
     import { fade } from "svelte/transition";
@@ -55,24 +56,26 @@
 </script>
 
 <div class="flex items-center justify-center !mt-20">
-    <div class="flex flex-col gap-4">
-        <TextInput
-            invalid={auth.username === undefined}
-            invalidText="Username is required."
-            labelText="Username"
-            placeholder="Enter your username..."
-            bind:value={auth.username}
-        />
-        <TextInput
-            invalid={auth.password === undefined}
-            invalidText="Password is required."
-            labelText="Password"
-            placeholder="Enter your password..."
-            type="password"
-            bind:value={auth.password}
-        />
-        <Button on:click={login}>Login</Button>
-    </div>
+    <Tile class="w-96">
+        <div class="flex flex-col gap-4">
+            <TextInput
+                invalid={auth.username === undefined}
+                invalidText="Username is required."
+                labelText="Username"
+                placeholder="Enter your username..."
+                bind:value={auth.username}
+            />
+            <TextInput
+                invalid={auth.password === undefined}
+                invalidText="Password is required."
+                labelText="Password"
+                placeholder="Enter your password..."
+                type="password"
+                bind:value={auth.password}
+            />
+            <Button on:click={login}>Login</Button>
+        </div>
+    </Tile>
 </div>
 
 {#if notification.kind}
