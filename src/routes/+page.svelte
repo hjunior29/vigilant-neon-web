@@ -95,7 +95,7 @@
 				alt="Bun"
 			/>
 			<img
-				src="https://www.svgrepo.com/show/354553/websocket.svg"
+				src="https://raw.githubusercontent.com/Marfusios/websocket-client/master/websocket-logo.png"
 				alt="WebSocket"
 			/>
 		</div>

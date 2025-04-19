@@ -16,10 +16,11 @@ export async function apiRequest<T>(
         const publicRoutes = [
             "ping",
             "pubsub/",
-            "auth/login"
+            "auth/login",
         ];
         const isPublicRoute =
-            publicRoutes.includes(endpoint)
+            publicRoutes.includes(endpoint) ||
+            endpoint.includes("shared")
 
         const token = localStorage.getItem("token");
 

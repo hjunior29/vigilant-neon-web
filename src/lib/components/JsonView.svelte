@@ -59,10 +59,10 @@
     .copy-icon {
         position: absolute;
         top: 0.5rem;
-        right: 0.5rem;
+        right: 2rem;
         cursor: pointer;
         background: #2a2a2a;
-        padding: 6px;
+        padding: 8px;
         transition: background 0.2s;
     }
 
@@ -77,7 +77,7 @@
         overflow-x: auto;
         font-family: monospace;
         font-size: 14px;
-        margin: 0;
+        margin: 1rem;
         color: #ccc;
     }
 
