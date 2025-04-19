@@ -4,12 +4,72 @@
 	import type { Engine } from "@tsparticles/engine";
 	import { Button } from "carbon-components-svelte";
 	import { goto } from "$app/navigation";
+	import type { Notification } from "$lib/models/notification";
+	import { onMount } from "svelte";
+	import type { ApiResponse } from "$lib/models/apiResponse";
+	import { apiRequest } from "$lib/api/utils";
+
+	interface PingPong {
+		message: string;
+	}
+
+	let apiPingSuccess: boolean = false;
+	let notification: Notification = {};
+	let timeout: any = undefined;
 
 	const options = { preset: "seaAnemone" };
-
 	void particlesInit(async (engine: Engine) => {
 		await loadSeaAnemonePreset(engine);
 	});
+
+	onMount(() => {
+		apiWakeUp();
+	});
+
+	async function apiWakeUp() {
+		const start = Date.now();
+		apiPingSuccess = false;
+		let attempts = 0;
+
+		while (!apiPingSuccess) {
+			attempts++;
+			const response = await apiRequest<ApiResponse<PingPong>>(
+				"ping",
+				"GET",
+			);
+
+			if (response.status === 200) {
+				apiPingSuccess = true;
+				const end = Date.now();
+				const duration = Math.round((end - start) / 1000);
+				const message = `The API took ${duration} seconds to respond after ${attempts} attempt(s).`;
+
+				notification = {
+					kind: "success",
+					title: "Success",
+					subtitle: message,
+					caption: new Date().toLocaleString(),
+					timeout: 3_000,
+				};
+			} else {
+				const message = `Attempt ${attempts} failed. Retrying in 10 seconds...\n${response.message}`;
+
+				notification = {
+					kind: "error",
+					title: "Error",
+					subtitle: message,
+					caption: new Date().toLocaleString(),
+					timeout: 3_000,
+				};
+
+				await new Promise((resolve) => setTimeout(resolve, 10_000));
+			}
+
+			if (!apiPingSuccess) {
+				await new Promise((resolve) => setTimeout(resolve, 5_000));
+			}
+		}
+	}
 </script>
 
 <Particles {options} />
