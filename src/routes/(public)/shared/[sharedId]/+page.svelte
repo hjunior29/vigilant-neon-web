@@ -55,7 +55,9 @@
     {topic.id}
     <div class="json-wrapper">
         {#if topic.content}
-            <JsonView json={topic.content} />
+            {#key topic.content}
+                <JsonView json={topic.content} />
+            {/key}
         {:else}
             <Loading />
         {/if}
