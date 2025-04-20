@@ -22,7 +22,7 @@
         ToolbarSearch,
     } from "carbon-components-svelte";
     import TrashCan from "carbon-icons-svelte/lib/TrashCan.svelte";
-    import { onMount } from "svelte";
+    import { onDestroy, onMount } from "svelte";
     import { fade } from "svelte/transition";
 
     let initialized = false;
@@ -39,13 +39,25 @@
     let openShareTopicModal: boolean = false;
     let isLoadingShare: boolean = false;
     let sharedId: string = "";
+    let stopAt: number = 0;
 
     onMount(() => {
+        stopAt = Date.now() + 10 * 60 * 1000;
         getTopics();
+    });
+
+    onDestroy(() => {
+        clearTimeout(timeout);
     });
 
     async function getTopics() {
         if (isSearching) return;
+        if (Date.now() >= stopAt) {
+            console.warn(
+                "Stopping topic fetching due to time limit. Time limit reached",
+            );
+            return;
+        }
 
         if (!initialized) isLoading = true;
 
@@ -181,6 +193,7 @@
     {:else}
         <Tile>
             <DataTable
+                class="overflow-auto"
                 batchSelection
                 selectable
                 bind:selectedRowIds
@@ -297,9 +310,11 @@
                     {:else}{cell.value}{/if}
                 </svelte:fragment>
                 <svelte:fragment slot="expanded-row" let:row>
-                    <JsonView
-                        json={topics.find((t) => t.id === row.id)?.content}
-                    />
+                    {#key topics.find((t) => t.id === row.id)?.content}
+                        <JsonView
+                            json={topics.find((t) => t.id === row.id)?.content}
+                        />
+                    {/key}
                 </svelte:fragment>
             </DataTable>
         </Tile>
