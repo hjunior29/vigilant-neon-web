@@ -1,10 +1,10 @@
 <script lang="ts">
-    import { apiRequest } from "$lib/api/utils";
+    import {apiRequest, websocketRequest} from "$lib/api/utils";
     import JsonView from "$lib/components/JsonView.svelte";
-    import type { ApiResponse } from "$lib/models/apiResponse";
-    import type { Notification } from "$lib/models/notification";
-    import type { Topic } from "$lib/models/topic";
-    import { getSharedUrl } from "$lib/utils";
+    import type {ApiResponse} from "$lib/models/apiResponse";
+    import type {Notification} from "$lib/models/notification";
+    import type {Topic} from "$lib/models/topic";
+    import {getSharedUrl} from "$lib/utils";
     import {
         Button,
         CodeSnippet,
@@ -22,13 +22,11 @@
         ToolbarSearch,
     } from "carbon-components-svelte";
     import TrashCan from "carbon-icons-svelte/lib/TrashCan.svelte";
-    import { onDestroy, onMount } from "svelte";
-    import { fade } from "svelte/transition";
+    import {onMount} from "svelte";
+    import {fade} from "svelte/transition";
 
-    let initialized = false;
     let topics: Topic[] = [];
     let notification: Notification = {};
-    let timeout: any = undefined;
     let isLoading: boolean = true;
     let filteredRowIds: string[] = [];
     let isSearching: boolean = false;
@@ -39,28 +37,26 @@
     let openShareTopicModal: boolean = false;
     let isLoadingShare: boolean = false;
     let sharedId: string = "";
-    let stopAt: number = 0;
+    let searchTerm: string = "";
 
     onMount(() => {
-        stopAt = Date.now() + 10 * 60 * 1000;
         getTopics();
-    });
 
-    onDestroy(() => {
-        clearTimeout(timeout);
+        websocketRequest("realtime", {
+            onOpen: () => {
+            },
+            onMessage: (message) => {
+                if (message.type === "realtime") {
+                    topics = message.data as Topic[];
+                }
+            },
+            onClose: () => {
+            },
+            onError: (err) => console.error("websocket error:", err)
+        });
     });
 
     async function getTopics() {
-        if (isSearching) return;
-        if (Date.now() >= stopAt) {
-            console.warn(
-                "Stopping topic fetching due to time limit. Time limit reached",
-            );
-            return;
-        }
-
-        if (!initialized) isLoading = true;
-
         const response = await apiRequest<ApiResponse<Topic[]>>(
             "pubsub",
             "GET",
@@ -90,11 +86,6 @@
         }
 
         isLoading = false;
-        initialized = true;
-
-        timeout = setTimeout(() => {
-            getTopics();
-        }, 1000);
     }
 
     async function deleteTopics() {
@@ -170,6 +161,35 @@
         }
         isLoadingShare = false;
     }
+
+    function filterTopic(topic: Topic, value: string): boolean {
+        const val = value.toLowerCase();
+
+        const matchInContent = topic.content
+            ? JSON.stringify(topic.content).toLowerCase().includes(val)
+            : false;
+
+        return (
+            topic?.id?.toLowerCase().includes(val) ||
+            topic?.publisherId?.toLowerCase().includes(val) ||
+            topic?.subscriberId?.toLowerCase().includes(val) ||
+            (topic?.content?.messages ? "yes" : "no").includes(val) ||
+            matchInContent
+        );
+    }
+
+    const handleSearchInput = (event: Event): void => {
+        if (event.target instanceof HTMLInputElement) {
+            let inputValue: string;
+            inputValue = event.target.value;
+            searchTerm = inputValue;
+        }
+    };
+
+
+    $: filteredTopics = searchTerm
+        ? topics.filter(topic => filterTopic(topic, searchTerm))
+        : topics;
 </script>
 
 <Content>
@@ -207,16 +227,13 @@
                     {
                         key: "createdAt",
                         value: "Created At",
-                        display: (date) => new Date(date).toLocaleString(),
-                        sort: (a, b) =>
-                            new Date(a).getTime() - new Date(b).getTime(),
                     },
                     { key: "publisherId", value: "Publisher ID" },
                     { key: "subscriberId", value: "Subscriber ID" },
                     { key: "hasContent", value: "Has Content" },
                     { key: "overflow", empty: true },
                 ]}
-                rows={topics.map((topic) => ({
+                rows={filteredTopics.map((topic) => ({
                     id: topic.id,
                     createdAt: topic.createdAt,
                     publisherId: topic.publisherId,
@@ -248,40 +265,10 @@
                             <ToolbarSearch
                                 persistent
                                 placeholder="Search topics..."
-                                on:input={(e) =>
-                                    (isSearching = !!(
-                                        e.target as HTMLInputElement
-                                    ).value)}
-                                on:clear={() => (isSearching = false)}
-                                shouldFilterRows={(row, value) => {
-                                    const val = value.toString().toLowerCase();
-
-                                    const matchInContent = (() => {
-                                        const topic = topics.find(
-                                            (t) => t.id === row.id,
-                                        );
-                                        if (!topic || !topic.content)
-                                            return false;
-                                        const jsonString = JSON.stringify(
-                                            topic.content,
-                                        ).toLowerCase();
-                                        return jsonString.includes(val);
-                                    })();
-
-                                    return (
-                                        row.id.toLowerCase().includes(val) ||
-                                        row.publisherId
-                                            .toLowerCase()
-                                            .includes(val) ||
-                                        row.subscriberId
-                                            .toLowerCase()
-                                            .includes(val) ||
-                                        row.hasContent
-                                            .toLowerCase()
-                                            .includes(val) ||
-                                        matchInContent
-                                    );
+                                on:input={(e) => {
+                                    handleSearchInput(e);
                                 }}
+                                on:clear={() => (searchTerm = "")}
                                 bind:filteredRowIds
                             />
                         {/if}
@@ -302,7 +289,7 @@
                                 danger
                                 text="Delete"
                                 on:click={() => {
-                                    rowIdToDelete = [row.id!];
+                                    rowIdToDelete = [row.id ?? ""];
                                     deleteTopics();
                                 }}
                             />
@@ -346,8 +333,7 @@
                 title={notification.title}
                 subtitle={notification.subtitle}
                 caption={notification.caption}
-                on:close={(e) => {
-                    timeout = undefined;
+                on:close={() => {
                     notification = {};
                 }}
             />

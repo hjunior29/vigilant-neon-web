@@ -1,9 +1,15 @@
-import { env } from '$env/dynamic/public';
+import {env} from '$env/dynamic/public';
 
 interface ApiResponse<T> {
     status: number;
     message: string;
     data?: T;
+}
+
+interface WebSocketMessage<T = any> {
+    type: string;
+    action: string;
+    data: T;
 }
 
 export async function apiRequest<T>(
@@ -92,5 +98,65 @@ export async function apiRequest<T>(
     } catch (error) {
         console.error("Error during request:", error);
         throw error;
+    }
+}
+
+export function websocketRequest<T>(
+    endpoint: "topic" | "realtime",
+    options?: {
+        onMessage?: (data: WebSocketMessage<T>) => void;
+        onError?: (error: Event | string) => void;
+        onClose?: () => void;
+        onOpen?: (ws: WebSocket) => void;
+    }
+): WebSocket | null {
+    try {
+        const token = localStorage.getItem("token");
+        if (!token) {
+            console.warn("Token não informado. Redirecionando para login...");
+            localStorage.removeItem("token");
+            window.location.href = "/login";
+            return null;
+        }
+
+        let url: string = "";
+        if (process.env.NODE_ENV === "production") {
+            const baseUrl = env.PUBLIC_WS_URL;
+            url = `${baseUrl}/${endpoint}?authorization=${token}`;
+        } else {
+            const baseUrl = env.PUBLIC_WS_URL;
+            url = `${baseUrl}/${endpoint}?authorization=${token}`;
+        }
+
+        const ws = new WebSocket(url);
+
+        ws.onopen = () => {
+            options?.onOpen?.(ws);
+        };
+
+        ws.onmessage = (event) => {
+            try {
+                const message = JSON.parse(event.data);
+                options?.onMessage?.(message);
+            } catch (err) {
+                console.error("Error parsing WebSocket message:", err);
+                options?.onError?.(String(err));
+            }
+        };
+
+        ws.onerror = (err) => {
+            console.error("websocket error:", err);
+            options?.onError?.(err);
+        };
+
+        ws.onclose = () => {
+            options?.onClose?.();
+        };
+
+        return ws;
+    } catch (error) {
+        console.error("error during websocket connection:", error);
+        options?.onError?.(String(error));
+        return null;
     }
 }
