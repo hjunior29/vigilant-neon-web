@@ -121,11 +121,11 @@ export function websocketRequest<T>(
 
         let url: string = "";
         if (process.env.NODE_ENV === "production") {
-            const baseUrl = env.PUBLIC_WS_URL;
-            url = `${baseUrl}/${endpoint}?authorization=${token}`;
+            const baseUrl = env.PUBLIC_API_URL;
+            url = `${baseUrl}/ws/${endpoint}?authorization=${token}`;
         } else {
-            const baseUrl = env.PUBLIC_WS_URL;
-            url = `${baseUrl}/${endpoint}?authorization=${token}`;
+            const baseUrl = env.PUBLIC_API_URL;
+            url = `${baseUrl}/ws/${endpoint}?authorization=${token}`;
         }
 
         const ws = new WebSocket(url);
